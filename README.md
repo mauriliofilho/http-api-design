@@ -1,130 +1,95 @@
-# HTTP API Design Guide
+# Guia para Projeto de API HTTP
 
-## Introduction
+## Introdução
 
-This guide describes a set of HTTP+JSON API design practices, originally
-extracted from work on the [Heroku Platform API](https://devcenter.heroku.com/articles/platform-api-reference).
+Este guia descreve uma série de boas práticas para o projeto de APIs HTTP+JSON, originalmente extraido de um trabalho na [API da Plataforma Heroku](https://devcenter.heroku.com/articles/platform-api-reference).
 
-This guide informs additions to that API and also guides new internal
-APIs at Heroku. We hope it’s also of interest to API designers
-outside of Heroku.
+Este guia inclue adições a essa API e serve de guia para novas APIs Internas no Heroku. Esperamos que seja de interesse de outros que projetam APIs que não são do Heroku.
 
-Our goals here are consistency and focusing on business logic while
-avoiding design bikeshedding. We’re looking for _a good, consistent,
-well-documented way_ to design APIs, not necessarily _the only/ideal
-way_.
+Nosso objetivo aqui são consistencia e foco nas regras de negocios evitando coisas supérfluas. Procuramos um jeito _bom, consistente e bem docuemntado_ de projetar APIs, não necessariamente _o método único/ideal_.
 
-We assume you’re familiar with the basics of HTTP+JSON APIs and won’t
-cover all of the fundamentals of those in this guide.
+Assumimos que você já esteja farmiliarizado com o básico de APIs HTTP+JSON APIs e não cobriremos todos os fundamentos disto nesse guia.
 
-We welcome [contributions](CONTRIBUTING.md) to this guide.
+Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
 
-## Contents
+## Conteúdo
 
-* [Foundations](#foundations)
-  *  [Separate Concerns](#separate-concerns)
-  *  [Require Secure Connections](#require-secure-connections)
-  *  [Require Versioning in the Accepts Header](#require-versioning-in-the-accepts-header)
-  *  [Support ETags for Caching](#support-etags-for-caching)
-  *  [Provide Request-Ids for Introspection](#provide-request-ids-for-introspection)
-  *  [Divide Large Responses Across Requests with Ranges](#divide-large-responses-across-requests-with-ranges)
-* [Requests](#requests)
-  *  [Accept serialized JSON in request bodies](#accept-serialized-json-in-request-bodies)
-  *  [Use consistent path formats](#use-consistent-path-formats)
-    *  [Downcase paths and attributes](#downcase-paths-and-attributes)
-    *  [Support non-id dereferencing for convenience](#support-non-id-dereferencing-for-convenience)
-    *  [Minimize path nesting](#minimize-path-nesting)
-* [Responses](#responses)
-  *  [Return appropriate status codes](#return-appropriate-status-codes)
-  *  [Provide full resources where available](#provide-full-resources-where-available)
-  *  [Provide resource (UU)IDs](#provide-resource-uuids)
-  *  [Provide standard timestamps](#provide-standard-timestamps)
-  *  [Use UTC times formatted in ISO8601](#use-utc-times-formatted-in-iso8601)
-  *  [Nest foreign key relations](#nest-foreign-key-relations)
-  *  [Generate structured errors](#generate-structured-errors)
-  *  [Show rate limit status](#show-rate-limit-status)
-  *  [Keep JSON minified in all responses](#keep-json-minified-in-all-responses)
-* [Artifacts](#artifacts)
-  *  [Provide machine-readable JSON schema](#provide-machine-readable-json-schema)
-  *  [Provide human-readable docs](#provide-human-readable-docs)
-  *  [Provide executable examples](#provide-executable-examples)
-  *  [Describe stability](#describe-stability)
-* [Translations](#translations)
+* [Fundamentos](#foundations)
+  *  [Separe as Responsabilidades](#separate-concerns)
+  *  [Exija Conexões Seguras](#require-secure-connections)
+  *  [Exija Versionamento no Cabeçalho Accepts](#require-versioning-in-the-accepts-header)
+  *  [Suporte ETags para Cacheamento](#support-etags-for-caching)
+  *  [Forneça Request-Ids para Introspecção](#provide-request-ids-for-introspection)
+  *  [Divida Respostas Longas Entre Requisições com Ranges](#divide-large-responses-across-requests-with-ranges)
+* [Requisições](#requests)
+  *  [Aceite JSON serializado no corpo das requisições](#accept-serialized-json-in-request-bodies)
+  *  [Use formatos de rotas consistentes](#use-consistent-path-formats)
+    *  [Rotas e atributos em letras minúsculas](#downcase-paths-and-attributes)
+    *  [Suporte referencia com atributos que não sejam ID por conveniencia](#support-non-id-dereferencing-for-convenience)
+    *  [Minimize a profundidade da rota](#minimize-path-nesting)
+* [Respostas](#responses)
+  *  [Retorne o código de estado apropriado](#return-appropriate-status-codes)
+  *  [Prover recursos completos quando disponivel](#provide-full-resources-where-available)
+  *  [Prover os (UU)IDs dos recursos](#provide-resource-uuids)
+  *  [Prover timestamps padrões](#provide-standard-timestamps)
+  *  [Use horários UTC em formato ISO8601](#use-utc-times-formatted-in-iso8601)
+  *  [Aninhe as relações de chaves estrangeiras](#nest-foreign-key-relations)
+  *  [Gere erros estruturados](#generate-structured-errors)
+  *  [Mostre o estado limite de requisições](#show-rate-limit-status)
+  *  [Manter o JSON minificado em todas as respostas](#keep-json-minified-in-all-responses)
+* [Artefatos](#artifacts)
+  *  [Prover um esquema JSON processavel](#provide-machine-readable-json-schema)
+  *  [Prover documentação para leitura](#provide-human-readable-docs)
+  *  [Prover exemplos executaveis](#provide-executable-examples)
+  *  [Descreva a estabilidade](#describe-stability)
+* [Traduções](#translations)
 
-### Foundations
+### Fundamentos
 
-#### Separate Concerns
+#### Separe as Responsabilidades
 
-Keep things simple while designing by separating the concerns between the
-different parts of the request and response cycle. Keeping simple rules here
-allows for greater focus on larger and harder problems.
+Mantenha as coisas simples quando for projetar separando as responsabilidades entre partes diferentes do ciclo de requisição e resposta. Mantendo regras simples aqui permite um foco maior em problemas maiores e mais complexos.
 
-Requests and responses will be made to address a particular resource or
-collection. Use the path to indicate identity, the body to transfer the
-contents and headers to communicate metadata. Query params may be used as a
-means to pass header information also in edge cases, but headers are preferred
-as they are more flexible and can convey more diverse information.
+Requisições e respostas serão feitas para se dirigir a um recurso em particular ou coleção. Use o caminho para indicar a identidade, o corpo para transferir o conteúdo e os cabeçalhos para indicar metadados. Parametros podem ser usado como um meio de passar informações de cabeçalhos em casos extremos, mas cabeçalhos são preferidos já que são mais flexiveis e podem transmitir informações mais diversas.
 
-#### Require Secure Connections
+#### Exija Conexões Seguras
 
-Require secure connections with TLS to access the API, without exception.
-It’s not worth trying to figure out or explain when it is OK to use TLS
-and when it’s not. Just require TLS for everything.
+Exija conexões seguras com TLS para acessar a API, sem excessões.
+Não vale a pena ficar imaginando ou explicando quando se deve usar TLS e quando não. Simplesmente exija TLS para tudo.
 
-Ideally, simply reject any non-TLS requests by not responding to requests for
-http or port 80 to avoid any insecure data exchange. In environments where this
-is not possible, respond with `403 Forbidden`.
+O ideal é simplesmente rejeitar qualquer requisição não TLS não respondendo a requisição http ou na porta 80 para evitar troca de dados inseguros. Em ambientes que isto não é possivel, responda com `403 Forbidden`.
 
-Redirects are discouraged since they allow sloppy/bad client behaviour without
-providing any clear gain.  Clients that rely on redirects double up on
-server traffic and render TLS useless since sensitive data will already
- have been exposed during the first call.
+Redirecionamentos são desencorajados uma vez que eles permitem um comportamento incorreto do cliente sem oferecer nenhum ganho. Clientes que dependem de redirecionamentos dobram o tráfego do servidor e fazem com que o TLS seja inutil uma vez que dados sensiveis já terão sido expostos na primeira requisição.
 
-#### Require Versioning in the Accepts Header
+#### Exija Versionamento no Cabeçalho Accepts
 
-Versioning and the transition between versions can be one of the more
-challenging aspects of designing and operating an API. As such, it is best to
-start with some mechanisms in place to mitigate this from the start.
+Versionamento e a transição entre versões podem ser um dos aspectos mais desafiadores de projetar e manter uma API. Por isso, é melhor empregar mecanismos para facilitar isto desde o começo.
 
-To prevent surprise, breaking changes to users, it is best to require a version
-be specified with all requests. Default versions should be avoided as they are
-very difficult, at best, to change in the future.
+Para prevenir surpresas, indisponibilidade para o usuário, é melhor exigir que a versão seja especificada com todas as requisições. Versões padrões devem ser evitadas já que, no melhor dos casos, são muito dificeis de mudar no futuro.
 
-It is best to provide version specification in the headers, with other
-metadata, using the `Accept` header with a custom content type, e.g.:
+É melhor enviar especificação da versão no cabeçalho, com outros metadados, usando o cabeçalho `Accept` com um _content type_ personalizado, por exemplo:
 
 ```
 Accept: application/vnd.heroku+json; version=3
 ```
 
-#### Support ETags for Caching
+#### Suporte ETags para Cacheamento
 
-Include an `ETag` header in all responses, identifying the specific
-version of the returned resource. This allows users to cache resources
-and use requests with this value in the `If-None-Match` header to determine
-if the cache should be updated.
+Inclua um cabeçalho `ETag` em todas as respostas, identificando a versão especifica do recurso retornado. Isto permite aos usuários cachear os recursos e usar requisições com este valor no cabeçalho `If-None-Match` para determinar se o cache deve ser atualizado.
 
-#### Provide Request-Ids for Introspection
+#### Forneça Request-Ids para Introspecção
 
-Include a `Request-Id` header in each API response, populated with a
-UUID value. By logging these values on the client, server and any backing
-services, it provides a mechanism to trace, diagnose and debug requests.
+Inclua um cabeçalho `Request-Id` em cada resposta da API, populada com um valor UUID. Registrando esses valores no cliente, servidores e qualquer serviço adicional, oferece um mecanismo para rastrear, diagnosticar e depurar requisições.
 
-#### Divide Large Responses Across Requests with Ranges
+#### Divida Respostas Longas Entre Requisições com Ranges
 
-Large responses should be broken across multiple requests using `Range` headers
-to specify when more data is available and how to retrieve it. See the
-[Heroku Platform API discussion of Ranges](https://devcenter.heroku.com/articles/platform-api-reference#ranges)
-for the details of request and response headers, status codes, limits,
-ordering, and iteration.
+Respostas grandes devem ser quebradas entre multiplas requisições usando o cabeçalho `Range` para especificar quando mais dados estão disponiveis e como obter eles. Veja [Heroku Platform API discussion of Ranges](https://devcenter.heroku.com/articles/platform-api-reference#ranges) para os detalhes da requisição e dos cabeçalhos de respostas, códigos de estado, limites, organização e iteração.
 
-### Requests
+### Requisições
 
-#### Accept serialized JSON in request bodies
+#### Aceite JSON serializado no corpo das requisições
 
-Accept serialized JSON on `PUT`/`PATCH`/`POST` request bodies, either
-instead of or in addition to form-encoded data. This creates symmetry
-with JSON-serialized response bodies, e.g.:
+Aceite JSON serializado no corpo das requisiçõe `PUT`/`PATCH`/`POST` além de ou em conjunto a dados form-encoded. Isto cria uma simetria com o corpo das requisições JSON serializado, p.e.:
 
 ```bash
 $ curl -X POST https://service.com/apps \
@@ -142,51 +107,44 @@ $ curl -X POST https://service.com/apps \
 }
 ```
 
-#### Use consistent path formats
+#### Use formatos de rotas consistentes
 
-##### Resource names
+##### Nomes de recursos
 
-Use the plural version of a resource name unless the resource in question is a singleton within the system (for example, in most systems a given user would only ever have one account). This keeps it consistent in the way you refer to particular resources.
+Use a versão pluralizada de um nome de recurso a menos que o recurso em questão seja unico no sistema (por exemplo, na maioria dos sistemas, um dado usuario deve ter somente uma conta). Isto permite consistencia na forma que você se refere a um recurso em particular.
 
-##### Actions
+##### Ações
 
-Prefer endpoint layouts that don’t need any special actions for
-individual resources. In cases where special actions are needed, place
-them under a standard `actions` prefix, to clearly delineate them:
+Prefira endpoint que não precisem de quaisquer ações especiais para recursos individuais. Em casos onde ações especiais são necessárias, coloque-as sobre um prefixo `actions` padrão, para diferencia-los com clareza:
 
 ```
 /resources/:resource/actions/:action
 ```
 
-e.g.
+p.e.
 
 ```
 /runs/{run_id}/actions/stop
 ```
 
-#### Downcase paths and attributes
+#### Rotas e atributos em letras minúsculas
 
-Use downcased and dash-separated path names, for alignment with
-hostnames, e.g:
+Use rotas com letras minusculas e separadas por hifen, para que seja igual a nomes de dominio, p.e.:
 
 ```
 service-api.com/users
 service-api.com/app-setups
 ```
 
-Downcase attributes as well, but use underscore separators so that
-attribute names can be typed without quotes in JavaScript, e.g.:
+Também utilize letras minusculas para os atributos, mas use sublinhado como separador pois assim nomes de atributos podem ser digitados sem aspas em JavaScript, p.e.:
 
 ```
 service_class: "first"
 ```
 
-#### Support non-id dereferencing for convenience
+#### Suporte referencia com atributos que não sejam ID por conveniencia
 
-In some cases it may be inconvenient for end-users to provide IDs to
-identify a resource. For example, a user may think in terms of a Heroku
-app name, but that app may be identified by a UUID. In these cases you
-may want to accept both an id or name, e.g.:
+Em alguns casos pode ser incoveniente para o usuario final oferecer IDs para identificar um recurso. Por exemplo, um usuario pode pensar no nome de Apps no Heroku, mas este app pode ser identificado por um UUID. Nestes casos você poderia aceitar ambos, p.e.:
 
 ```bash
 $ curl https://service.com/apps/{app_id_or_name}
@@ -194,20 +152,18 @@ $ curl https://service.com/apps/97addcf0-c182
 $ curl https://service.com/apps/www-prod
 ```
 
-Do not accept only names to the exclusion of IDs.
+Não aceite somente nomes omitindo IDs.
 
-#### Minimize path nesting
+#### Minimize a profundidade da rota
 
-In data models with nested parent/child resource relationships, paths
-may become deeply nested, e.g.:
+Em alguns modelos de dados com relacionamento de recursos pai/filho, as rotas podem acabar ficando muito profundas, p.e.:
 
 ```
 /orgs/{org_id}/apps/{app_id}/dynos/{dyno_id}
 ```
 
-Limit nesting depth by preferring to locate resources at the root
-path. Use nesting to indicate scoped collections. For example, for the
-case above where a dyno belongs to an app belongs to an org:
+Limite a profundidade excessiva preferindo localizar recursos na raiz da rota. Use nesting depth by preferring to locate resources at the root
+path. Use aninhamento para indicarcoleções. Por exemplo, para o caso acima em que um _dyno_ pertence a um app, que pertence a uma organização:
 
 ```
 /orgs/{org_id}
@@ -217,44 +173,35 @@ case above where a dyno belongs to an app belongs to an org:
 /dynos/{dyno_id}
 ```
 
-### Responses
+### Respostas
 
-#### Return appropriate status codes
+#### Retorne o código de estado apropriado
 
-Return appropriate HTTP status codes with each response. Successful
-responses should be coded according to this guide:
+Retorne o código de estado HTTP adequado com cada resposta. Respostas com exito devem retornar códigos de acordo com este guia:
 
-* `200`: Request succeeded for a `GET` call, for a `DELETE` or
-  `PATCH` call that completed synchronously, or for a `PUT` call that
-  synchronously updated an existing resource
-* `201`: Request succeeded for a `POST` call that completed
-  synchronously, or for a `PUT` call that synchronously created a new
-  resource
-* `202`: Request accepted for a `POST`, `PUT`, `DELETE`, or `PATCH` call that
-  will be processed asynchronously
-* `206`: Request succeeded on `GET`, but only a partial response
-  returned: see [above on ranges](#divide-large-responses-across-requests-with-ranges)
+* `200`: Requisição com exito para um pedido `GET`, `DELETE` ou
+  `PATCH` que se completou de forma sincrona, ou para um pedido `PUT` que atualizou um recurso existente de forma sincrona
+* `201`: Requisição com exito para um pedido `POST` que completou de forma sincrona, ou para um pedido `PUT` que completou de forma sincrona a criação de um novo recurso
+* `202`: Requisição aceita para um pedido `POST`, `PUT`, `DELETE`, or `PATCH` call que será processada de forma assincrona
+* `206`: Requisição com exito para um pedido `GET`, mas que retorna somente uma resposta parcial: veja acima sobre [respostas longas](#divide-large-responses-across-requests-with-ranges)
 
-Pay attention to the use of authentication and authorization error codes:
+Preste atenção ao uso de códigos de erros para autenticação e autorização:
 
-* `401 Unauthorized`: Request failed because user is not authenticated
-* `403 Forbidden`: Request failed because user does not have authorization to access a specific resource
+* `401 Unauthorized`: Requisição falhou por que o usuario não está autenticado
+* `403 Forbidden`: Requisição falhou por que o usuario não tem autorização para acessar o recurso especifico
 
-Return suitable codes to provide additional information when there are errors:
+Retorne códigos adequadospara prover informações adicionais quando há erros:
 
-* `422 Unprocessable Entity`: Your request was understood, but contained invalid parameters
-* `429 Too Many Requests`: You have been rate-limited, retry later
-* `500 Internal Server Error`: Something went wrong on the server, check status site and/or report the issue
+* `422 Unprocessable Entity`: Sua requisição foi entendida, mas contém parametros inválidos
+* `429 Too Many Requests`: Você superou o limete de consumo, tente novamente mais tarde
+* `500 Internal Server Error`: Algo deu errado com o Servidor, confira o site do estado e/ou notifique o problema
 
-Refer to the [HTTP response code spec](https://tools.ietf.org/html/rfc7231#section-6)
-for guidance on status codes for user error and server error cases.
+Consulte a [Especificação de códigos de respostas HTTP](https://tools.ietf.org/html/rfc7231#section-6)
+par um guia sobre código de estado para erros de usuario e servidor.
 
-#### Provide full resources where available
+#### Prover recursos completos quando disponivel
 
-Provide the full resource representation (i.e. the object with all
-attributes) whenever possible in the response. Always provide the full
-resource on 200 and 201 responses, including `PUT`/`PATCH` and `DELETE`
-requests, e.g.:
+Disponibilize a representação completa do recurso (p.e. o objeto com todos os atributos) quando possivel na resposta. Sempre disponibilize o recurso completo em respostas 200 e 201, includindo requisições `PUT`/`PATCH` e `DELETE` p.e.:
 
 ```bash
 $ curl -X DELETE \  
@@ -271,8 +218,7 @@ Content-Type: application/json;charset=utf-8
 }
 ```
 
-202 responses will not include the full resource representation,
-e.g.:
+Respostas 202 não incluirão a representação total do recurso, p.e.:
 
 ```bash
 $ curl -X DELETE \  
@@ -284,23 +230,19 @@ Content-Type: application/json;charset=utf-8
 {}
 ```
 
-#### Provide resource (UU)IDs
+#### Prover os (UU)IDs dos recursos
 
-Give each resource an `id` attribute by default. Use UUIDs unless you
-have a very good reason not to. Don’t use IDs that won’t be globally
-unique across instances of the service or other resources in the
-service, especially auto-incrementing IDs.
+Dê a cada recurso um atributo `id` por padrão. Use UUIDs a menos que você tenham uma razão muito boa para não fazê-lo. Não use IDs que não são unicos globalmente entre instancias de serviços ou outros recursos no serviço, especialmente IDs com auto incremento.
 
-Render UUIDs in downcased `8-4-4-4-12` format, e.g.:
+Mostre os UUIDs em letras minusculas no formato `8-4-4-4-12`, p.e.:
 
 ```
 "id": "01234567-89ab-cdef-0123-456789abcdef"
 ```
 
-#### Provide standard timestamps
+#### Prover timestamps padrões
 
-Provide `created_at` and `updated_at` timestamps for resources by default,
-e.g:
+Disponibilize timestamps `created_at` e `updated_at` para recursos por padrão, p.e.:
 
 ```javascript
 {
@@ -311,21 +253,20 @@ e.g:
 }
 ```
 
-These timestamps may not make sense for some resources, in which case
-they can be omitted.
+Estes timestamps talvez não façam sentido para alguns recursos, neste caso, podem ser omitidos.
 
-#### Use UTC times formatted in ISO8601
+#### Use horários UTC em formato ISO8601
 
-Accept and return times in UTC only. Render times in ISO8601 format,
-e.g.:
+Aceite e retorne horários somente em UTC. Mostre horarios em formato ISO8601,
+p.e.:
 
 ```
 "finished_at": "2012-01-01T12:00:00Z"
 ```
 
-#### Nest foreign key relations
+#### Aninhe as relações de chaves estrangeiras
 
-Serialize foreign key references with a nested object, e.g.:
+Serialize as referencias a chaves estrangeiras com um objeto aninhado, p.e.:
 
 ```javascript
 {
@@ -337,7 +278,7 @@ Serialize foreign key references with a nested object, e.g.:
 }
 ```
 
-Instead of e.g.:
+Ao invés de p.e.:
 
 ```javascript
 {
@@ -347,9 +288,7 @@ Instead of e.g.:
 }
 ```
 
-This approach makes it possible to inline more information about the
-related resource without having to change the structure of the response
-or introduce more top-level response fields, e.g.:
+Este método possibilita mostrar mais informações sobre um recurso sem ter de mudar a estrutura de resposta ou introduzir mais campos de de resposta de alto nivel p.e.:
 
 ```javascript
 {
@@ -363,12 +302,9 @@ or introduce more top-level response fields, e.g.:
 }
 ```
 
-#### Generate structured errors
+#### Gere erros estruturados
 
-Generate consistent, structured response bodies on errors. Include a
-machine-readable error `id`, a human-readable error `message`, and
-optionally a `url` pointing the client to further information about the
-error and how to resolve it, e.g.:
+Gere corpos de respostas de erros estruturados e consistentes. Inclua um `id`  legivel para máquinas, uma `message` de erro legivel para humanos e opcionalmente uma `url` que aponte para mais informações sobre o erro e como resolver isto, p.e.:
 
 ```
 HTTP/1.1 429 Too Many Requests
@@ -382,30 +318,24 @@ HTTP/1.1 429 Too Many Requests
 }
 ```
 
-Document your error format and the possible error `id`s that clients may
-encounter.
+Documente seus formatos de erros e possiveis `id`s de erros que os clientes possam encontrar.
 
-#### Show rate limit status
+#### Mostre o estado limite de requisições
 
-Rate limit requests from clients to protect the health of the service
-and maintain high service quality for other clients. You can use a
-[token bucket algorithm](http://en.wikipedia.org/wiki/Token_bucket) to
-quantify request limits.
+Limite as requisições dos clientes para proteger o seu serviço e manter um serviço de alta qualidade  para outros cllientes. Voc6e pode usar um
+[algoritimo de token bucket](http://en.wikipedia.org/wiki/Token_bucket) para calcular o limite de respostas.
 
-Return the remaining number of request tokens with each request in the
-`RateLimit-Remaining` response header.
+Retorne o número restante de requisições no cabeçalho de resposta `RateLimit-Remaining`.
 
-#### Keep JSON minified in all responses
+#### Manter o JSON minificado em todas as respostas
 
-Extra whitespace adds needless response size to requests, and many
-clients for human consumption will automatically "prettify" JSON
-output. It is best to keep JSON responses minified e.g.:
+Espaços extras adicionam tamanho extra as respostas, e muitos clientes que mostram os dados para humanos "embelezam" a saída em JSON. É melhor manter as respostas JSON minificadas, p.e.:
 
 ```json
 {"beta":false,"email":"alice@heroku.com","id":"01234567-89ab-cdef-0123-456789abcdef","last_login":"2012-01-01T12:00:00Z","created_at":"2012-01-01T12:00:00Z","updated_at":"2012-01-01T12:00:00Z"}
 ```
 
-Instead of e.g.:
+Ao invés de p.e.:
 
 ```json
 {
@@ -418,71 +348,57 @@ Instead of e.g.:
 }
 ```
 
-You may consider optionally providing a way for clients to retrieve 
-more verbose response, either via a query parameter (e.g. `?pretty=true`)
-or via an `Accept` header param (e.g.
+Você pode, opcionalmente, prover um jeito para os clietnes de receber uma respostas mais _verbosa_, tanto via um parametro query (p.e. `?pretty=true`)
+como via um parametro do cabeçalho `Accept` (e.g.
 `Accept: application/vnd.heroku+json; version=3; indent=4;`).
 
-### Artifacts
+### Artefatos
 
-#### Provide machine-readable JSON schema
+#### Prover um esquema JSON processavel
 
-Provide a machine-readable schema to exactly specify your API. Use
-[prmd](https://github.com/interagent/prmd) to manage your schema, and ensure
-it validates with `prmd verify`.
+Disponibilize um esquema processavel para especificar sua API. Use
+[prmd](https://github.com/interagent/prmd) para gerenciar o seu esquema e asegure que está validado com `prmd verify`.
 
-#### Provide human-readable docs
+#### Prover documentação para leitura
 
-Provide human-readable documentation that client developers can use to
-understand your API.
+Disponibilize uma documentação para que os desenvolvedores possam entender a sua API.
 
-If you create a schema with prmd as described above, you can easily
-generate Markdown docs for all endpoints with `prmd doc`.
+Se você criar um esquema com prmd, como descrito acima, você pode facilmente gerar documentação em Markdown para todos os endpoints com `prmd doc`.
 
-In addition to endpoint details, provide an API overview with
-information about:
+Em adição aos detalhes do endpoint, disponibilize um resumo da APIcom informações sobre:
 
-* Authentication, including acquiring and using authentication tokens.
-* API stability and versioning, including how to select the desired API
-  version.
-* Common request and response headers.
-* Error serialization format.
-* Examples of using the API with clients in different languages.
+* Autenticação, includindo adquirir e usar tokens de autenticação.
+* Estabilidade e versionamento da API, incluindo como selecionar a versão desejada da API.
+* Cabeçalhos padrões de requisições e respostas.
+* Formato de resposta de erro.
+* Exemplos de utilização da APi com clientes em diferentes linguagens.
 
-#### Provide executable examples
+#### Prover exemplos executaveis
 
-Provide executable examples that users can type directly into their
-terminals to see working API calls. To the greatest extent possible,
-these examples should be usable verbatim, to minimize the amount of
-work a user needs to do to try the API, e.g.:
+Disponibilize exemplos executaveis que os usuarios possam utilizar direto em seus terminais para ver como a API trabalha. Sempre que possivel, estes exemplos devem ser palavra por palavras, para minimizar o trabalho que um usuario precisa fazer para testar a API, p.e.:
 
 ```bash
 $ export TOKEN=... # acquire from dashboard
 $ curl -is https://$TOKEN@service.com/users
 ```
 
-If you use [prmd](https://github.com/interagent/prmd) to generate Markdown
-docs, you will get examples for each endpoint for free.
+Se você usa [prmd](https://github.com/interagent/prmd) para gerar documentação em Markdown, você terá exemplos para cada endpoint inclusos.
 
-#### Describe stability
+#### Descreva a estabilidade
 
-Describe the stability of your API or its various endpoints according to
-its maturity and stability, e.g. with prototype/development/production
-flags.
+Descreva a estabilidade da sua API ou seus vários endpoints de acordo com a maturidade e estabilidade, p.e. com sinalização de prototipo/desenvolvimento/produção.
 
-See the [Heroku API compatibility policy](https://devcenter.heroku.com/articles/api-compatibility-policy)
-for a possible stability and change management approach.
+Veja a [politica de compatibilidade da API do Heroku](https://devcenter.heroku.com/articles/api-compatibility-policy)
+para um exemplo de estabilidade e gerenciamento de mudanças.
 
-Once your API is declared production-ready and stable, do not make
-backwards incompatible changes within that API version. If you need to
-make backwards-incompatible changes, create a new API with an
-incremented version number.
+Uma vez que sua API está declarada como estavel e pronta para produção, não faça mudanças incompativeis com a mesma versão de API. Se você precisar mudanças incompativeis, criue uma nova API com numero de versão superior.
 
 
-### Translations
- * [Spanish version](https://github.com/jmnavarro/http-api-design) (based on [2a74f45](https://github.com/interagent/http-api-design/commit/2a74f45b9afaf6c951352f36c3a4e1b0418ed10b)), by [@jmnavarro](https://github.com/jmnavarro/)
- * [Korean version](https://github.com/yoondo/http-api-design) (based on [f38dba6](https://github.com/interagent/http-api-design/commit/f38dba6fd8e2b229ab3f09cd84a8828987188863)), by [@yoondo](https://github.com/yoondo/)
- * [Simplified Chinese version](https://github.com/ZhangBohan/http-api-design-ZH_CN) (based on [337c4a0](https://github.com/interagent/http-api-design/commit/337c4a05ad08f25c5e232a72638f063925f3228a)), by [@ZhangBohan](https://github.com/ZhangBohan/)
- * [Traditional Chinese version](https://github.com/kcyeu/http-api-design) (based on [232f8dc](https://github.com/interagent/http-api-design/commit/232f8dc6a941d0b25136bf64998242dae5575f66)), by [@kcyeu](https://github.com/kcyeu/)
- * [Turkish version](https://github.com/hkulekci/http-api-design/tree/master/tr) (based on [c03842f](https://github.com/interagent/http-api-design/commit/c03842fda80261e82860f6dc7e5ccb2b5d394d51)), by [@hkulekci](https://github.com/hkulekci/)
-
+### Traduções
+ * [Versão em Português](https://github.com/Gutem/http-api-design/commit/fba98f08b50acbb08b7b30c012a6d0ca795e29ee) (a partir de [fba98f08b5](https://github.com/interagent/http-api-design/commit/fba98f08b50acbb08b7b30c012a6d0ca795e29ee)), por [@Gutem](https://github.com/Gutem/)
+ * [Versão em Espanhol](https://github.com/jmnavarro/http-api-design) (a partir de [2a74f45](https://github.com/interagent/http-api-design/commit/2a74f45b9afaf6c951352f36c3a4e1b0418ed10b)), por [@jmnavarro](https://github.com/jmnavarro/)
+ * [Versão em Coreano](https://github.com/yoondo/http-api-design) (a partir de [f38dba6](https://github.com/interagent/http-api-design/commit/f38dba6fd8e2b229ab3f09cd84a8828987188863)), por [@yoondo](https://github.com/yoondo/)
+ * [Versão em Chines Simplificado](https://github.com/ZhangBohan/http-api-design-ZH_CN) (a partir de [337c4a0](https://github.com/interagent/http-api-design/commit/337c4a05ad08f25c5e232a72638f063925f3228a)), por [@ZhangBohan](https://github.com/ZhangBohan/)
+ * [Versão em Chinês Tradicional](https://github.com/kcyeu/http-api-design) (a partir de [232f8dc](https://github.com/interagent/http-api-design/commit/232f8dc6a941d0b25136bf64998242dae5575f66)), por [@kcyeu](https://github.com/kcyeu/)
+ * [Versão em Turco](https://github.com/hkulekci/http-api-design/tree/master/tr) (a partir de [c03842f](https://github.com/interagent/http-api-design/commit/c03842fda80261e82860f6dc7e5ccb2b5d394d51)), por [@hkulekci](https://github.com/hkulekci/)
+ * [Versão original em Inglês](https://github.com/interagent/http-api-design), por [@interagent](https://github.com/interagent)
