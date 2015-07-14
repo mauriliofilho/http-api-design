@@ -2,13 +2,13 @@
 
 ## Introdução
 
-Este guia descreve uma série de boas práticas para o projeto de APIs HTTP+JSON, originalmente extraido de um trabalho na [API da Plataforma Heroku](https://devcenter.heroku.com/articles/platform-api-reference).
+Este guia descreve uma série de boas práticas para o projeto de APIs HTTP+JSON, originalmente extraído de um trabalho na [API da Plataforma Heroku](https://devcenter.heroku.com/articles/platform-api-reference).
 
-Este guia inclue adições a essa API e serve de guia para novas APIs Internas no Heroku. Esperamos que seja de interesse de outros que projetam APIs que não são do Heroku.
+Este guia inclui adições a essa API e serve de guia para novas APIs Internas no Heroku. Esperamos que seja de interesse de outros que projetam APIs que não são do Heroku.
 
-Nosso objetivo aqui são consistencia e foco nas regras de negocios evitando coisas supérfluas. Procuramos um jeito _bom, consistente e bem docuemntado_ de projetar APIs, não necessariamente _o método único/ideal_.
+Nosso objetivo aqui são consistência e foco nas regras de negócios evitando coisas supérfluas. Procuramos um jeito _bom, consistente e bem documentado_ de projetar APIs, não necessariamente _o método único/ideal_.
 
-Assumimos que você já esteja farmiliarizado com o básico de APIs HTTP+JSON APIs e não cobriremos todos os fundamentos disto nesse guia.
+Assumimos que você já esteja familiarizado com o básico de APIs HTTP+JSON APIs e não cobriremos todos os fundamentos disto nesse guia.
 
 Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
 
@@ -25,11 +25,11 @@ Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
   *  [Aceite JSON serializado no corpo das requisições](#accept-serialized-json-in-request-bodies)
   *  [Use formatos de rotas consistentes](#use-consistent-path-formats)
     *  [Rotas e atributos em letras minúsculas](#downcase-paths-and-attributes)
-    *  [Suporte referencia com atributos que não sejam ID por conveniencia](#support-non-id-dereferencing-for-convenience)
+    *  [Suporte referência com atributos que não sejam ID por conveniência](#support-non-id-dereferencing-for-convenience)
     *  [Minimize a profundidade da rota](#minimize-path-nesting)
 * [Respostas](#responses)
   *  [Retorne o código de estado apropriado](#return-appropriate-status-codes)
-  *  [Prover recursos completos quando disponivel](#provide-full-resources-where-available)
+  *  [Prover recursos completos quando disponível](#provide-full-resources-where-available)
   *  [Prover os (UU)IDs dos recursos](#provide-resource-uuids)
   *  [Prover timestamps padrões](#provide-standard-timestamps)
   *  [Use horários UTC em formato ISO8601](#use-utc-times-formatted-in-iso8601)
@@ -38,9 +38,9 @@ Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
   *  [Mostre o estado limite de requisições](#show-rate-limit-status)
   *  [Manter o JSON minificado em todas as respostas](#keep-json-minified-in-all-responses)
 * [Artefatos](#artifacts)
-  *  [Prover um esquema JSON processavel](#provide-machine-readable-json-schema)
+  *  [Prover um esquema JSON processável](#provide-machine-readable-json-schema)
   *  [Prover documentação para leitura](#provide-human-readable-docs)
-  *  [Prover exemplos executaveis](#provide-executable-examples)
+  *  [Prover exemplos executáveis](#provide-executable-examples)
   *  [Descreva a estabilidade](#describe-stability)
 * [Traduções](#translations)
 
@@ -50,24 +50,24 @@ Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
 
 Mantenha as coisas simples quando for projetar separando as responsabilidades entre partes diferentes do ciclo de requisição e resposta. Mantendo regras simples aqui permite um foco maior em problemas maiores e mais complexos.
 
-Requisições e respostas serão feitas para se dirigir a um recurso em particular ou coleção. Use o caminho para indicar a identidade, o corpo para transferir o conteúdo e os cabeçalhos para indicar metadados. Parametros podem ser usado como um meio de passar informações de cabeçalhos em casos extremos, mas cabeçalhos são preferidos já que são mais flexiveis e podem transmitir informações mais diversas.
+Requisições e respostas serão feitas para se dirigir a um recurso em particular ou coleção. Use o caminho para indicar a identidade, o corpo para transferir o conteúdo e os cabeçalhos para indicar meta dados. Parâmetros podem ser usado como um meio de passar informações de cabeçalhos em casos extremos, mas cabeçalhos são preferidos já que são mais flexiveis e podem transmitir informações mais diversas.
 
 #### Exija Conexões Seguras
 
 Exija conexões seguras com TLS para acessar a API, sem excessões.
 Não vale a pena ficar imaginando ou explicando quando se deve usar TLS e quando não. Simplesmente exija TLS para tudo.
 
-O ideal é simplesmente rejeitar qualquer requisição não TLS não respondendo a requisição http ou na porta 80 para evitar troca de dados inseguros. Em ambientes que isto não é possivel, responda com `403 Forbidden`.
+O ideal é simplesmente rejeitar qualquer requisição não TLS não respondendo a requisição http ou na porta 80 para evitar troca de dados inseguros. Em ambientes que isto não é possível, responda com `403 Forbidden`.
 
-Redirecionamentos são desencorajados uma vez que eles permitem um comportamento incorreto do cliente sem oferecer nenhum ganho. Clientes que dependem de redirecionamentos dobram o tráfego do servidor e fazem com que o TLS seja inutil uma vez que dados sensiveis já terão sido expostos na primeira requisição.
+Redirecionamentos são desencorajados uma vez que eles permitem um comportamento incorreto do cliente sem oferecer nenhum ganho. Clientes que dependem de redirecionamentos dobram o tráfego do servidor e fazem com que o TLS seja inútil uma vez que dados sensíveis já terão sido expostos na primeira requisição.
 
 #### Exija Versionamento no Cabeçalho Accepts
 
 Versionamento e a transição entre versões podem ser um dos aspectos mais desafiadores de projetar e manter uma API. Por isso, é melhor empregar mecanismos para facilitar isto desde o começo.
 
-Para prevenir surpresas, indisponibilidade para o usuário, é melhor exigir que a versão seja especificada com todas as requisições. Versões padrões devem ser evitadas já que, no melhor dos casos, são muito dificeis de mudar no futuro.
+Para prevenir surpresas, indisponibilidade para o usuário, é melhor exigir que a versão seja especificada com todas as requisições. Versões padrões devem ser evitadas já que, no melhor dos casos, são muito difíceis de mudar no futuro.
 
-É melhor enviar especificação da versão no cabeçalho, com outros metadados, usando o cabeçalho `Accept` com um _content type_ personalizado, por exemplo:
+É melhor enviar especificação da versão no cabeçalho, com outros meta dados, usando o cabeçalho `Accept` com um _content type_ personalizado, por exemplo:
 
 ```
 Accept: application/vnd.heroku+json; version=3
@@ -75,7 +75,7 @@ Accept: application/vnd.heroku+json; version=3
 
 #### Suporte ETags para Cacheamento
 
-Inclua um cabeçalho `ETag` em todas as respostas, identificando a versão especifica do recurso retornado. Isto permite aos usuários cachear os recursos e usar requisições com este valor no cabeçalho `If-None-Match` para determinar se o cache deve ser atualizado.
+Inclua um cabeçalho `ETag` em todas as respostas, identificando a versão específica do recurso retornado. Isto permite aos usuários cachear os recursos e usar requisições com este valor no cabeçalho `If-None-Match` para determinar se o cache deve ser atualizado.
 
 #### Forneça Request-Ids para Introspecção
 
@@ -83,13 +83,13 @@ Inclua um cabeçalho `Request-Id` em cada resposta da API, populada com um valor
 
 #### Divida Respostas Longas Entre Requisições com Ranges
 
-Respostas grandes devem ser quebradas entre multiplas requisições usando o cabeçalho `Range` para especificar quando mais dados estão disponiveis e como obter eles. Veja [Heroku Platform API discussion of Ranges](https://devcenter.heroku.com/articles/platform-api-reference#ranges) para os detalhes da requisição e dos cabeçalhos de respostas, códigos de estado, limites, organização e iteração.
+Respostas grandes devem ser quebradas entre múltiplas requisições usando o cabeçalho `Range` para especificar quando mais dados estão disponíveis e como obter eles. Veja [Heroku Platform API discussion of Ranges](https://devcenter.heroku.com/articles/platform-api-reference#ranges) para os detalhes da requisição e dos cabeçalhos de respostas, códigos de estado, limites, organização e iteração.
 
 ### Requisições
 
 #### Aceite JSON serializado no corpo das requisições
 
-Aceite JSON serializado no corpo das requisiçõe `PUT`/`PATCH`/`POST` além de ou em conjunto a dados form-encoded. Isto cria uma simetria com o corpo das requisições JSON serializado, p.e.:
+Aceite JSON serializado no corpo das requisições `PUT`/`PATCH`/`POST` além de ou em conjunto a dados form-encoded. Isto cria uma simetria com o corpo das requisições JSON serializado, p.e.:
 
 ```bash
 $ curl -X POST https://service.com/apps \
@@ -111,7 +111,7 @@ $ curl -X POST https://service.com/apps \
 
 ##### Nomes de recursos
 
-Use a versão pluralizada de um nome de recurso a menos que o recurso em questão seja unico no sistema (por exemplo, na maioria dos sistemas, um dado usuario deve ter somente uma conta). Isto permite consistencia na forma que você se refere a um recurso em particular.
+Use a versão pluralizada de um nome de recurso a menos que o recurso em questão seja único no sistema (por exemplo, na maioria dos sistemas, um dado usuário deve ter somente uma conta). Isto permite consistência na forma que você se refere a um recurso em particular.
 
 ##### Ações
 
@@ -129,22 +129,22 @@ p.e.
 
 #### Rotas e atributos em letras minúsculas
 
-Use rotas com letras minusculas e separadas por hifen, para que seja igual a nomes de dominio, p.e.:
+Use rotas com letras minúsculas e separadas por hífen, para que seja igual a nomes de domínio, p.e.:
 
 ```
 service-api.com/users
 service-api.com/app-setups
 ```
 
-Também utilize letras minusculas para os atributos, mas use sublinhado como separador pois assim nomes de atributos podem ser digitados sem aspas em JavaScript, p.e.:
+Também utilize letras minúsculas para os atributos, mas use sublinhado como separador pois assim nomes de atributos podem ser digitados sem aspas em JavaScript, p.e.:
 
 ```
 service_class: "first"
 ```
 
-#### Suporte referencia com atributos que não sejam ID por conveniencia
+#### Suporte referencia com atributos que não sejam ID por conveniência
 
-Em alguns casos pode ser incoveniente para o usuario final oferecer IDs para identificar um recurso. Por exemplo, um usuario pode pensar no nome de Apps no Heroku, mas este app pode ser identificado por um UUID. Nestes casos você poderia aceitar ambos, p.e.:
+Em alguns casos pode ser inconveniente para o usuário final oferecer IDs para identificar um recurso. Por exemplo, um usuário pode pensar no nome de Apps no Heroku, mas este app pode ser identificado por um UUID. Nestes casos você poderia aceitar ambos, p.e.:
 
 ```bash
 $ curl https://service.com/apps/{app_id_or_name}
@@ -162,8 +162,7 @@ Em alguns modelos de dados com relacionamento de recursos pai/filho, as rotas po
 /orgs/{org_id}/apps/{app_id}/dynos/{dyno_id}
 ```
 
-Limite a profundidade excessiva preferindo localizar recursos na raiz da rota. Use nesting depth by preferring to locate resources at the root
-path. Use aninhamento para indicarcoleções. Por exemplo, para o caso acima em que um _dyno_ pertence a um app, que pertence a uma organização:
+Limite a profundidade excessiva preferindo localizar recursos na raiz da rota. Use aninhamento para indicar coleções. Por exemplo, para o caso acima em que um _dyno_ pertence a um app, que pertence a uma organização:
 
 ```
 /orgs/{org_id}
@@ -177,31 +176,31 @@ path. Use aninhamento para indicarcoleções. Por exemplo, para o caso acima em 
 
 #### Retorne o código de estado apropriado
 
-Retorne o código de estado HTTP adequado com cada resposta. Respostas com exito devem retornar códigos de acordo com este guia:
+Retorne o código de estado HTTP adequado com cada resposta. Respostas com êxito devem retornar códigos de acordo com este guia:
 
-* `200`: Requisição com exito para um pedido `GET`, `DELETE` ou
-  `PATCH` que se completou de forma sincrona, ou para um pedido `PUT` que atualizou um recurso existente de forma sincrona
-* `201`: Requisição com exito para um pedido `POST` que completou de forma sincrona, ou para um pedido `PUT` que completou de forma sincrona a criação de um novo recurso
-* `202`: Requisição aceita para um pedido `POST`, `PUT`, `DELETE`, or `PATCH` call que será processada de forma assincrona
-* `206`: Requisição com exito para um pedido `GET`, mas que retorna somente uma resposta parcial: veja acima sobre [respostas longas](#divide-large-responses-across-requests-with-ranges)
+* `200`: Requisição com êxito para um pedido `GET`, `DELETE` ou
+  `PATCH` que se completou de forma síncrona, ou para um pedido `PUT` que atualizou um recurso existente de forma síncrona
+* `201`: Requisição com êxito para um pedido `POST` que completou de forma síncrona, ou para um pedido `PUT` que completou de forma síncrona a criação de um novo recurso
+* `202`: Requisição aceita para um pedido `POST`, `PUT`, `DELETE`, or `PATCH` call que será processada de forma assíncrona
+* `206`: Requisição com êxito para um pedido `GET`, mas que retorna somente uma resposta parcial: veja acima sobre [respostas longas](#divide-large-responses-across-requests-with-ranges)
 
 Preste atenção ao uso de códigos de erros para autenticação e autorização:
 
-* `401 Unauthorized`: Requisição falhou por que o usuario não está autenticado
-* `403 Forbidden`: Requisição falhou por que o usuario não tem autorização para acessar o recurso especifico
+* `401 Unauthorized`: Requisição falhou por que o usuário não está autenticado
+* `403 Forbidden`: Requisição falhou por que o usuário não tem autorização para acessar o recurso especifico
 
 Retorne códigos adequadospara prover informações adicionais quando há erros:
 
-* `422 Unprocessable Entity`: Sua requisição foi entendida, mas contém parametros inválidos
-* `429 Too Many Requests`: Você superou o limete de consumo, tente novamente mais tarde
+* `422 Unprocessable Entity`: Sua requisição foi entendida, mas contém parâmetros inválidos
+* `429 Too Many Requests`: Você superou o limite de consumo, tente novamente mais tarde
 * `500 Internal Server Error`: Algo deu errado com o Servidor, confira o site do estado e/ou notifique o problema
 
 Consulte a [Especificação de códigos de respostas HTTP](https://tools.ietf.org/html/rfc7231#section-6)
-par um guia sobre código de estado para erros de usuario e servidor.
+par um guia sobre código de estado para erros de usuário e servidor.
 
-#### Prover recursos completos quando disponivel
+#### Prover recursos completos quando disponível
 
-Disponibilize a representação completa do recurso (p.e. o objeto com todos os atributos) quando possivel na resposta. Sempre disponibilize o recurso completo em respostas 200 e 201, includindo requisições `PUT`/`PATCH` e `DELETE` p.e.:
+Disponibilize a representação completa do recurso (p.e. o objeto com todos os atributos) quando possível na resposta. Sempre disponibilize o recurso completo em respostas 200 e 201, incluindo requisições `PUT`/`PATCH` e `DELETE` p.e.:
 
 ```bash
 $ curl -X DELETE \  
@@ -232,9 +231,9 @@ Content-Type: application/json;charset=utf-8
 
 #### Prover os (UU)IDs dos recursos
 
-Dê a cada recurso um atributo `id` por padrão. Use UUIDs a menos que você tenham uma razão muito boa para não fazê-lo. Não use IDs que não são unicos globalmente entre instancias de serviços ou outros recursos no serviço, especialmente IDs com auto incremento.
+Dê a cada recurso um atributo `id` por padrão. Use UUIDs a menos que você tenham uma razão muito boa para não fazê-lo. Não use IDs que não são únicos globalmente entre instancias de serviços ou outros recursos no serviço, especialmente IDs com auto incremento.
 
-Mostre os UUIDs em letras minusculas no formato `8-4-4-4-12`, p.e.:
+Mostre os UUIDs em letras minúsculas no formato `8-4-4-4-12`, p.e.:
 
 ```
 "id": "01234567-89ab-cdef-0123-456789abcdef"
@@ -257,7 +256,7 @@ Estes timestamps talvez não façam sentido para alguns recursos, neste caso, po
 
 #### Use horários UTC em formato ISO8601
 
-Aceite e retorne horários somente em UTC. Mostre horarios em formato ISO8601,
+Aceite e retorne horários somente em UTC. Mostre horários em formato ISO8601,
 p.e.:
 
 ```
@@ -288,7 +287,7 @@ Ao invés de p.e.:
 }
 ```
 
-Este método possibilita mostrar mais informações sobre um recurso sem ter de mudar a estrutura de resposta ou introduzir mais campos de de resposta de alto nivel p.e.:
+Este método possibilita mostrar mais informações sobre um recurso sem ter de mudar a estrutura de resposta ou introduzir mais campos de de resposta de alto nível p.e.:
 
 ```javascript
 {
@@ -304,7 +303,7 @@ Este método possibilita mostrar mais informações sobre um recurso sem ter de 
 
 #### Gere erros estruturados
 
-Gere corpos de respostas de erros estruturados e consistentes. Inclua um `id`  legivel para máquinas, uma `message` de erro legivel para humanos e opcionalmente uma `url` que aponte para mais informações sobre o erro e como resolver isto, p.e.:
+Gere corpos de respostas de erros estruturados e consistentes. Inclua um `id`  legível para máquinas, uma `message` de erro legível para humanos e opcionalmente uma `url` que aponte para mais informações sobre o erro e como resolver isto, p.e.:
 
 ```
 HTTP/1.1 429 Too Many Requests
@@ -318,18 +317,18 @@ HTTP/1.1 429 Too Many Requests
 }
 ```
 
-Documente seus formatos de erros e possiveis `id`s de erros que os clientes possam encontrar.
+Documente seus formatos de erros e possíveis `id`s de erros que os clientes possam encontrar.
 
 #### Mostre o estado limite de requisições
 
-Limite as requisições dos clientes para proteger o seu serviço e manter um serviço de alta qualidade  para outros cllientes. Voc6e pode usar um
+Limite as requisições dos clientes para proteger o seu serviço e manter um serviço de alta qualidade  para outros clientes. Voc6e pode usar um
 [algoritimo de token bucket](http://en.wikipedia.org/wiki/Token_bucket) para calcular o limite de respostas.
 
 Retorne o número restante de requisições no cabeçalho de resposta `RateLimit-Remaining`.
 
-#### Manter o JSON minificado em todas as respostas
+#### Manter o JSON minimizado em todas as respostas
 
-Espaços extras adicionam tamanho extra as respostas, e muitos clientes que mostram os dados para humanos "embelezam" a saída em JSON. É melhor manter as respostas JSON minificadas, p.e.:
+Espaços extras adicionam tamanho extra as respostas, e muitos clientes que mostram os dados para humanos "embelezam" a saída em JSON. É melhor manter as respostas JSON mininizadas, p.e.:
 
 ```json
 {"beta":false,"email":"alice@heroku.com","id":"01234567-89ab-cdef-0123-456789abcdef","last_login":"2012-01-01T12:00:00Z","created_at":"2012-01-01T12:00:00Z","updated_at":"2012-01-01T12:00:00Z"}
@@ -348,34 +347,34 @@ Ao invés de p.e.:
 }
 ```
 
-Você pode, opcionalmente, prover um jeito para os clietnes de receber uma respostas mais _verbosa_, tanto via um parametro query (p.e. `?pretty=true`)
-como via um parametro do cabeçalho `Accept` (e.g.
+Você pode, opcionalmente, prover um jeito para os clientes de receber uma respostas mais _verbosa_, tanto via um parâmetro query (p.e. `?pretty=true`)
+como via um parâmetro do cabeçalho `Accept` (e.g.
 `Accept: application/vnd.heroku+json; version=3; indent=4;`).
 
 ### Artefatos
 
-#### Prover um esquema JSON processavel
+#### Prover um esquema JSON processável
 
-Disponibilize um esquema processavel para especificar sua API. Use
-[prmd](https://github.com/interagent/prmd) para gerenciar o seu esquema e asegure que está validado com `prmd verify`.
+Disponibilize um esquema processável para especificar sua API. Use
+[prmd](https://github.com/interagent/prmd) para gerenciar o seu esquema e assegure que está validado com `prmd verify`.
 
 #### Prover documentação para leitura
 
 Disponibilize uma documentação para que os desenvolvedores possam entender a sua API.
 
-Se você criar um esquema com prmd, como descrito acima, você pode facilmente gerar documentação em Markdown para todos os endpoints com `prmd doc`.
+Se você criar um esquema com `prmd, como descrito acima, você pode facilmente gerar documentação em Markdown para todos os endpoints com `prmd doc`.
 
-Em adição aos detalhes do endpoint, disponibilize um resumo da APIcom informações sobre:
+Em adição aos detalhes do endpoint, disponibilize um resumo da API com informações sobre:
 
-* Autenticação, includindo adquirir e usar tokens de autenticação.
+* Autenticação, incluindo adquirir e usar tokens de autenticação.
 * Estabilidade e versionamento da API, incluindo como selecionar a versão desejada da API.
 * Cabeçalhos padrões de requisições e respostas.
 * Formato de resposta de erro.
-* Exemplos de utilização da APi com clientes em diferentes linguagens.
+* Exemplos de utilização da API com clientes em diferentes linguagens.
 
-#### Prover exemplos executaveis
+#### Prover exemplos executáveis
 
-Disponibilize exemplos executaveis que os usuarios possam utilizar direto em seus terminais para ver como a API trabalha. Sempre que possivel, estes exemplos devem ser palavra por palavras, para minimizar o trabalho que um usuario precisa fazer para testar a API, p.e.:
+Disponibilize exemplos executáveis que os usuários possam utilizar direto em seus terminais para ver como a API trabalha. Sempre que possível, estes exemplos devem ser palavra por palavras, para minimizar o trabalho que um usuário precisa fazer para testar a API, p.e.:
 
 ```bash
 $ export TOKEN=... # acquire from dashboard
@@ -386,12 +385,12 @@ Se você usa [prmd](https://github.com/interagent/prmd) para gerar documentaçã
 
 #### Descreva a estabilidade
 
-Descreva a estabilidade da sua API ou seus vários endpoints de acordo com a maturidade e estabilidade, p.e. com sinalização de prototipo/desenvolvimento/produção.
+Descreva a estabilidade da sua API ou seus vários endpoints de acordo com a maturidade e estabilidade, p.e. com sinalização de protótipo/desenvolvimento/produção.
 
 Veja a [politica de compatibilidade da API do Heroku](https://devcenter.heroku.com/articles/api-compatibility-policy)
 para um exemplo de estabilidade e gerenciamento de mudanças.
 
-Uma vez que sua API está declarada como estavel e pronta para produção, não faça mudanças incompativeis com a mesma versão de API. Se você precisar mudanças incompativeis, criue uma nova API com numero de versão superior.
+Uma vez que sua API está declarada como estável e pronta para produção, não faça mudanças incompatíveis com a mesma versão de API. Se você precisar mudanças incompatíveis, crie uma nova API com numero de versão superior.
 
 
 ### Traduções
