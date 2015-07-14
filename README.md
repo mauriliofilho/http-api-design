@@ -395,7 +395,7 @@ Uma vez que sua API está declarada como estavel e pronta para produção, não 
 
 
 ### Traduções
- * [Versão em Português](https://github.com/Gutem/http-api-design/commit/fba98f08b50acbb08b7b30c012a6d0ca795e29ee) (a partir de [fba98f08b5](https://github.com/interagent/http-api-design/commit/fba98f08b50acbb08b7b30c012a6d0ca795e29ee)), por [@Gutem](https://github.com/Gutem/)
+ * [Versão em Português](https://github.com/Gutem/http-api-design/) (a partir de [fba98f08b5](https://github.com/interagent/http-api-design/commit/fba98f08b50acbb08b7b30c012a6d0ca795e29ee)), por [@Gutem](https://github.com/Gutem/)
  * [Versão em Espanhol](https://github.com/jmnavarro/http-api-design) (a partir de [2a74f45](https://github.com/interagent/http-api-design/commit/2a74f45b9afaf6c951352f36c3a4e1b0418ed10b)), por [@jmnavarro](https://github.com/jmnavarro/)
  * [Versão em Coreano](https://github.com/yoondo/http-api-design) (a partir de [f38dba6](https://github.com/interagent/http-api-design/commit/f38dba6fd8e2b229ab3f09cd84a8828987188863)), por [@yoondo](https://github.com/yoondo/)
  * [Versão em Chines Simplificado](https://github.com/ZhangBohan/http-api-design-ZH_CN) (a partir de [337c4a0](https://github.com/interagent/http-api-design/commit/337c4a05ad08f25c5e232a72638f063925f3228a)), por [@ZhangBohan](https://github.com/ZhangBohan/)
