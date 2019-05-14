@@ -44,7 +44,7 @@ Agradecemos [contribuições](CONTRIBUTING.md) a esse guia.
   *  [Descreva a estabilidade](#describe-stability)
 * [Traduções](#translations)
 
-### Fundamentos
+### <a name="foundations"></a>Fundamentos
 
 #### Separe as Responsabilidades
 
